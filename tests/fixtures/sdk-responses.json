@@ -1,0 +1,133 @@
+{
+  "FaxJob": {
+    "id": "fax_11111111111111111111111111111111",
+    "environment": "test",
+    "direction": "outbound",
+    "state": "queued",
+    "failure_code": null,
+    "to": "+15550000001",
+    "from": null,
+    "route": "us_ca",
+    "document_id": "doc_22222222222222222222222222222222",
+    "document_sha256": "abababababababababababababababababababababababababababababababab",
+    "transmitted_sha256": null,
+    "quote_id": "quote_33333333333333333333333333333333",
+    "billable_pages": 1,
+    "cover_pages": 0,
+    "pages_sent": 0,
+    "amount_micro": 0,
+    "captured_micro": 0,
+    "currency": "USD",
+    "provider": "sandbox",
+    "provider_ref": null,
+    "attempt_count": 0,
+    "client_reference": null,
+    "evidence": null,
+    "created_at": "2026-10-28T00:00:00Z",
+    "updated_at": "2026-10-28T00:00:00Z",
+    "completed_at": null,
+    "cancel_requested_at": null,
+    "approval_id": "apr_1",
+    "policy_version_id": null,
+    "one_time_order_id": null,
+    "one_time": null
+  },
+  "Quote": {
+    "id": "quote_33333333333333333333333333333333",
+    "environment": "test",
+    "document_id": "doc_22222222222222222222222222222222",
+    "document_sha256": "abababababababababababababababababababababababababababababababab",
+    "to": "+15550000001",
+    "from": null,
+    "route": "us_ca",
+    "document_pages": 1,
+    "cover_pages": 0,
+    "billable_pages": 1,
+    "amount_micro": 0,
+    "currency": "USD",
+    "price_version": "launch-v1",
+    "cover": null,
+    "authorization_required": false,
+    "warnings": [],
+    "expires_at": "2026-10-28T00:10:00Z",
+    "expired": false,
+    "consumed_by_job_id": null,
+    "created_at": "2026-10-28T00:00:00Z",
+    "pricing": "per_page",
+    "policy_evaluation": null
+  },
+  "Document": {
+    "id": "doc_22222222222222222222222222222222",
+    "environment": "test",
+    "status": "ready",
+    "source": "text",
+    "filename": "hello",
+    "content_type": "application/pdf",
+    "size_bytes": 1234,
+    "sha256": "abababababababababababababababababababababababababababababababab",
+    "page_count": 1,
+    "render_status": "rendered",
+    "render_reason": null,
+    "validation": {
+      "warnings": []
+    },
+    "upload_id": null,
+    "created_at": "2026-10-28T00:00:00Z",
+    "expires_at": null,
+    "deleted_at": null
+  },
+  "InboxItem": {
+    "id": "in_1",
+    "environment": "test",
+    "from": null,
+    "to": "+15550000001",
+    "pages": 1,
+    "status": "received",
+    "document_id": "doc_1",
+    "number_id": null,
+    "project_id": null,
+    "partial_content": false,
+    "media_status": "stored",
+    "duration_secs": 12,
+    "provider": "sandbox",
+    "received_at": "2026-11-02T00:00:00Z",
+    "read_at": null,
+    "expires_at": null,
+    "amount_micro": 0,
+    "note": null
+  },
+  "Balance": {
+    "environment": "test",
+    "currency": "USD",
+    "available_micro": 100000000,
+    "held_micro": 0
+  },
+  "Capabilities": {
+    "environment": "test",
+    "provider": "sandbox",
+    "send": true,
+    "receive": true,
+    "numbers": true,
+    "routes": [
+      "us_ca"
+    ],
+    "formats": [
+      "application/pdf"
+    ],
+    "max_pages": 50,
+    "max_upload_bytes": 25000000,
+    "price_version": "launch-v1",
+    "rates": {},
+    "scopes": [
+      "fax:read"
+    ],
+    "approvals": true,
+    "limits": {},
+    "one_time": {
+      "enabled": false,
+      "published": false,
+      "routes": [],
+      "max_document_pages": 10
+    }
+  }
+}
