@@ -41,6 +41,7 @@ dev = ["pytest>=8.3,<10", "pytest-asyncio>=1,<2", "ruff>=0.14,<1", "mypy>=1.18,<
 
 [tool.crewai]
 type = "tool"
+project_id = "97494032-e0c1-4316-88fb-04e551b00648"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/faxforagents_crewai"]
