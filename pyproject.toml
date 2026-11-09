@@ -37,7 +37,7 @@ Repository = "https://github.com/faxforagents/crewai-tools"
 Changelog = "https://github.com/faxforagents/crewai-tools/blob/main/CHANGELOG.md"
 
 [dependency-groups]
-dev = ["pytest>=8.3,<10", "pytest-asyncio>=1,<2", "ruff>=0.14,<1", "mypy>=1.18,<2", "httpx>=0.27,<1"]
+dev = ["pytest>=8.3,<10", "pytest-asyncio>=1,<2", "ruff>=0.14,<1", "mypy>=1.18,<3", "httpx>=0.27,<1"]
 
 [tool.crewai]
 type = "tool"
