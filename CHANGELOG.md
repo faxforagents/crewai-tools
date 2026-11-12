@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+The SDK dependency is `faxforagents>=0.2.3,<0.5`. The range ended below 0.3 and shut out the current SDK.
+The tests pass against SDK 0.2.3, 0.3.2 and the 0.4.0 branch. No tool changed.
+
 ## 0.1.0, 2026-11-04
 
 Prepared the first CrewAI AMP package. Publication is pending.

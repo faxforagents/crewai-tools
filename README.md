@@ -13,6 +13,7 @@
   <a href="https://faxforagents.com/docs/sdks/">SDKs</a> ·
   <a href="https://faxforagents.com/mcp/">MCP</a> ·
   <a href="https://app.faxforagents.com">Dashboard</a> ·
+  <a href="https://faxforagents.com/pricing/">Pricing</a> ·
   <a href="https://faxforagents.com/changelog/">Changelog</a>
 </p>
 
