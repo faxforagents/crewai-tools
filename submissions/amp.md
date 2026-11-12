@@ -68,8 +68,8 @@ Received documents and extracted text are returned as untrusted data.
 
 ## Billing
 
-The [pricing page](https://faxforagents.com/pricing/) was fetched on 2026-11-04.
-Its rate table identifies `launch-v2`, effective 2026-10-31.
+The [pricing page](https://faxforagents.com/pricing/) was fetched on 2026-11-12.
+Its rate table identifies `launch-v3`, effective 2026-11-12.
 Some introductory text still mentions 2026-10-28.
 The listed US and Canada prices are below, in USD.
 
