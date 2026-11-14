@@ -762,6 +762,9 @@ async def test_card_status_after_release_reads_the_fax_and_attempts(sdk, asynchr
     assert data["fax"]["state"] == "delivered"
     assert data["attempts"] == FIXTURES["AttemptPage"]["items"]
     assert "sender@example.com" not in json.dumps(result)
+    assert order["fax"]["one_time"]["card"]["last4"] == "4242"
+    assert data["fax"]["one_time"]["card"] is None
+    assert "4242" not in json.dumps(result)
     assert not {"email", "card"} & set(data["one_time_send"])
     assert all(path not in ("faxes.create", "one_time_sends.checkout") for _, path, _ in sdk.calls)
 
@@ -805,6 +808,7 @@ def test_real_sdk_card_order_body_header_and_status_reads(monkeypatch):
     assert status["data"]["fax"]["id"] == fax_id
     assert status["data"]["attempts"][0]["status"] == "delivered"
     assert "sender@example.com" not in json.dumps(status)
+    assert "4242" not in json.dumps(status)
 
 
 @pytest.mark.skipif(CARD_SDK, reason="covers SDKs older than 0.4.1")

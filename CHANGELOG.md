@@ -7,7 +7,7 @@ The package has the 17 tools of the hosted MCP server at API 1.20.3. It had 15. 
 - Added `RequestCardPaymentTool`: a person pays for one quoted fax by card, with no wallet balance.
 - It returns a payment link in `status_url`. It takes no card details and cannot pay.
 - Added `GetCardPaymentStatusTool`: the order, its next step, and the fax once it was released.
-- Both results leave out the order's status token, the payer's email address and the order's card field.
+- Both results leave out the order's status token, the payer's email address and the card's brand and last four digits.
 - A live card order requires `approval_id`, the same rule this package applies to live sends.
 - `quote_fax` takes `quality`, `sender_name`, `from_number` and `delete_after_send`.
 - `list_faxes` takes `idempotency_key` as a filter.

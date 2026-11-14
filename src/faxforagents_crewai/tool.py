@@ -108,7 +108,11 @@ def _card_data(operation: str, data: dict[str, Any]) -> dict[str, Any]:
     if order.get("next") not in ("checkout", "confirm"):
         shaped["status_url"] = None
     attempts = data.get("attempts")
-    shaped["fax"] = order.get("fax")
+    fax = order.get("fax")
+    if isinstance(fax, dict) and isinstance(fax.get("one_time"), dict):
+        # The fax repeats the card's brand and last four digits. Leave them out here too.
+        fax = {**fax, "one_time": {**fax["one_time"], "card": None}}
+    shaped["fax"] = fax
     shaped["attempts"] = attempts.get("items", []) if isinstance(attempts, dict) else []
     return shaped
 

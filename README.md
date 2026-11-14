@@ -160,7 +160,7 @@ The card is charged only for pages the carrier reports as arrived.
 `data.one_time_send.next` is `checkout`, `confirm`, `wait` or `done`.
 `data.status_url` is set only while a person still has to pay or confirm.
 Once the fax is released, `data.fax` and `data.attempts` carry its delivery state and carrier evidence.
-The order's status token, the payer's email address and the order's card field are left out of both results.
+The order's status token, the payer's email address and the card's brand and last four digits are left out of both results.
 
 Card orders need a live credential and `sandbox=False`. The API refuses a test credential.
 They cover the United States and Canada, within the page limit that `get_fax_capabilities` reports under `one_time`.
