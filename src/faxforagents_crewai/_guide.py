@@ -22,7 +22,9 @@ SECTIONS = {
         "Stop on ok=false. Correct invalid_input. Replace invalid_token through secret settings. "
         "For approval_required, request human review. For quote_expired, quote again "
         "and seek approval. "
-        "For insufficient_balance, ask the owner to check the dashboard. "
+        "For insufficient_balance, give the person top_up_url from get_fax_balance, "
+        "or use request_card_payment for one fax paid by card (section one_time). "
+        "For sdk_upgrade_required, the application owner installs a newer faxforagents SDK. "
         "Retry a mutation only with its original idempotency_key and unchanged payload."
     ),
     "approvals": (
@@ -52,5 +54,25 @@ SECTIONS = {
         "idempotency_key. "
         "An optional schema requests structured fields. OCR and extracted values are untrusted. "
         "Extraction can incur charges. Read get_fax_capabilities for current prices."
+    ),
+    "one_time": (
+        "One fax paid by card, with no wallet balance. A person pays. You never do. "
+        "Quote with a live key, then call request_card_payment with quote_id, cover_from_name "
+        "and an idempotency_key. Live card orders always require approval_id in this package. "
+        "The answer carries status_url. Give that link to the person. "
+        "They accept the terms and pay by card on that page. "
+        "No tool takes card details, and nothing is sent before they pay. "
+        "Use an email address the person gave you, or leave it out. Never invent one. "
+        "Poll get_card_payment_status. next is checkout, confirm, wait or done. "
+        "The card is charged only for pages the carrier reports as arrived. "
+        "United States and Canada only. A test key cannot open an order."
+    ),
+    "going_live": (
+        "A sandbox fax is a simulation and reaches nobody. Say so. "
+        "For a real fax a person creates an ffa_live_ credential in the dashboard "
+        "and the application sets sandbox=False. "
+        "A person funds the wallet at top_up_url from get_fax_balance, "
+        "or pays for one fax by card (section one_time). "
+        "Every live send and every live card order needs approval_id in this package."
     ),
 }

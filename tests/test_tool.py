@@ -6,6 +6,7 @@ import asyncio
 import inspect
 import json
 from importlib.resources import files
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -25,9 +26,33 @@ QUOTE = "quote_" + "2" * 32
 APPROVAL = "apr_" + "3" * 32
 FAX = "fax_" + "4" * 32
 INBOX = "inb_" + "5" * 32
+ORDER = "oto_" + "7" * 32
 KEY = "caller-operation-17"
 TEST_KEY = "ffa_test_" + "unit" * 8
 LIVE_KEY = "ffa_live_" + "unit" * 8
+
+FIXTURES = json.loads((Path(__file__).parent / "fixtures/sdk-responses.json").read_text())
+QUOTE_OPTIONS = "quality" in inspect.signature(sync_sdk.Quotes.create).parameters
+LIST_FILTER = "idempotency_key" in inspect.signature(sync_sdk.Faxes.list).parameters
+
+
+def _card_sdk():
+    # Card orders need create_from_quote with an optional accept_aup: SDK 0.4.1 or later.
+    resource = getattr(sync_sdk, "OneTimeSends", None)
+    if resource is None:
+        return False
+    accept = inspect.signature(resource.create_from_quote).parameters["accept_aup"]
+    return accept.default is not inspect.Parameter.empty
+
+
+CARD_SDK = _card_sdk()
+needs_card_sdk = pytest.mark.skipif(not CARD_SDK, reason="card orders need SDK 0.4.1 or later")
+needs_quote_options = pytest.mark.skipif(not QUOTE_OPTIONS, reason="needs SDK 0.4.0 or later")
+CARD_ARGS = {"quote_id": QUOTE, "cover_from_name": "Dana Whitfield", "idempotency_key": KEY}
+CARD_CASES = {
+    "request_card_payment": (CARD_ARGS, ["one_time_sends.create_from_quote"]),
+    "get_card_payment_status": ({"order_id": ORDER}, ["one_time_sends.get"]),
+}
 
 CASES = {
     "get_fax_capabilities": ({}, ["platform.capabilities"]),
@@ -50,6 +75,7 @@ CASES = {
     "list_inbox": ({"cursor": "opaque"}, ["inbox.list"]),
     "read_inbound_fax": ({"inbox_id": INBOX}, ["inbox.get"]),
     "extract_fax_data": ({"inbox_item_id": INBOX, "idempotency_key": KEY}, ["extractions.create"]),
+    **(CARD_CASES if CARD_SDK else {}),
 }
 
 
@@ -86,22 +112,25 @@ class FakeSDK:
 
             context = Context()
             sdk = async_sdk if asynchronous else sync_sdk
-            for resource in (
-                "Platform",
-                "Documents",
-                "Quotes",
-                "Faxes",
-                "Billing",
-                "Approvals",
-                "Inbox",
-                "Extractions",
+            for resource, attribute in (
+                ("Platform", "platform"),
+                ("Documents", "documents"),
+                ("Quotes", "quotes"),
+                ("Faxes", "faxes"),
+                ("Billing", "billing"),
+                ("Approvals", "approvals"),
+                ("Inbox", "inbox"),
+                ("Extractions", "extractions"),
+                ("OneTimeSends", "one_time_sends"),
             ):
-                target = getattr(sdk, resource)
+                target = getattr(sdk, resource, None)
+                if target is None:
+                    continue
                 methods = {}
                 for method, reference in inspect.getmembers(target, inspect.isfunction):
                     if method.startswith("_"):
                         continue
-                    path = resource.lower() + "." + method
+                    path = attribute + "." + method
 
                     signature = inspect.signature(reference)
 
@@ -116,8 +145,12 @@ class FakeSDK:
                         await asyncio.sleep(0)
                         return _call(**kwargs)
 
+                    # Show the wrapper the SDK's own signature, as a real client does.
+                    public = signature.replace(parameters=list(signature.parameters.values())[1:])
+                    call.__signature__ = public
+                    acall.__signature__ = public
                     methods[method] = acall if asynchronous else call
-                setattr(context, resource.lower(), SimpleNamespace(**methods))
+                setattr(context, attribute, SimpleNamespace(**methods))
             return context
 
         return create
@@ -135,6 +168,27 @@ def toolkit_tools(**kwargs):
     return {tool.name: tool for tool in FaxForAgentsToolkit(api_key=TEST_KEY, **kwargs).get_tools()}
 
 
+MODES = [False, True]
+
+
+async def invoke(tool, args, asynchronous=False):
+    structured = tool.to_structured_tool()
+    return await structured.ainvoke(args) if asynchronous else structured.invoke(args)
+
+
+def run_sync(tool, args):
+    return tool.to_structured_tool().invoke(args)
+
+
+def live_tool(tool_name, **kwargs):
+    cls = next(c for c in module.TOOL_CLASSES if c.model_fields["name"].default == tool_name)
+    return cls(api_key=LIVE_KEY, sandbox=False, **kwargs)
+
+
+def guide_tool():
+    return module.GetGuideTool()
+
+
 def test_canonical_surface_and_provider_schemas():
     toolkit = FaxForAgentsToolkit(api_key=TEST_KEY)
     assert isinstance(toolkit, BaseModel)
@@ -143,7 +197,7 @@ def test_canonical_surface_and_provider_schemas():
     )["tools"]
     tools = toolkit.get_tools()
     assert {tool.name for tool in tools} == set(definitions)
-    assert len(tools) == 15
+    assert len(tools) == 17
     for tool in tools:
         assert isinstance(tool, BaseTool)
         assert tool.description == definitions[tool.name]["description"]
@@ -158,6 +212,13 @@ def test_canonical_surface_and_provider_schemas():
         assert TEST_KEY not in repr(tool)
         assert TEST_KEY not in tool.model_dump_json()
     assert TEST_KEY not in toolkit.model_dump_json()
+    for name in ("request_card_payment", "get_card_payment_status"):
+        assert "card" in definitions[name]["description"]
+    assert "You cannot pay it yourself" in definitions["request_card_payment"]["description"]
+    assert definitions["send_approved_fax"]["annotations"]["destructiveHint"] is True
+    assert definitions["cancel_fax"]["annotations"]["destructiveHint"] is True
+    assert definitions["request_card_payment"]["annotations"]["destructiveHint"] is False
+    assert definitions["get_card_payment_status"]["annotations"]["readOnlyHint"] is True
 
 
 @pytest.mark.parametrize("name", CASES)
@@ -224,6 +285,43 @@ INVALID = [
         },
     ),
     ("get_fax_balance", {"api_key": LIVE_KEY}),
+    (
+        "quote_fax",
+        {"document_id": DOC, "to": "+15550000001", "quality": "best", "idempotency_key": KEY},
+    ),
+    (
+        "quote_fax",
+        {"document_id": DOC, "to": "+15550000001", "from_number": "555", "idempotency_key": KEY},
+    ),
+    (
+        "quote_fax",
+        {
+            "document_id": DOC,
+            "to": "+15550000001",
+            "sender_name": "a" * 129,
+            "idempotency_key": KEY,
+        },
+    ),
+    (
+        "quote_fax",
+        {
+            "document_id": DOC,
+            "to": "+15550000001",
+            "delete_after_send": "yes",
+            "idempotency_key": KEY,
+        },
+    ),
+    ("list_faxes", {"idempotency_key": "a" * 256}),
+    ("request_card_payment", {"quote_id": QUOTE, "idempotency_key": KEY}),
+    ("request_card_payment", {**CARD_ARGS, "cover_from_name": "D"}),
+    ("request_card_payment", {**CARD_ARGS, "cover_from_name": "D" * 121}),
+    ("request_card_payment", {**CARD_ARGS, "quote_id": FAX}),
+    ("request_card_payment", {**CARD_ARGS, "approval_id": QUOTE}),
+    ("request_card_payment", {**CARD_ARGS, "email": "a" * 255}),
+    ("request_card_payment", {**CARD_ARGS, "accept_aup": True}),
+    ("request_card_payment", {**CARD_ARGS, "card_number": "4242424242424242"}),
+    ("get_card_payment_status", {"order_id": FAX}),
+    ("get_card_payment_status", {}),
     ("send_approved_fax", {"quote_id": QUOTE, "sandbox": False, "idempotency_key": KEY}),
 ]
 
@@ -577,3 +675,260 @@ def test_amp_discovers_all_exports_without_credentials(monkeypatch):
         assert "api_key" not in item["run_params_schema"]["properties"]
         if item["name"] != "GetGuideTool":
             assert item["env_vars"][0]["name"] == "FAXFORAGENTS_API_KEY"
+
+
+@needs_card_sdk
+@pytest.mark.parametrize("asynchronous", MODES)
+async def test_card_order_returns_a_link_and_hides_token_payer_and_card(sdk, asynchronous):
+    order = {**FIXTURES["OneTimeOrderCreated"], "card": {"last4": "4242", "brand": "visa"}}
+    sdk.responses["one_time_sends.create_from_quote"] = order
+    args = {**CARD_ARGS, "approval_id": APPROVAL, "email": "dana@example.com"}
+    result = await invoke(live_tool("request_card_payment"), args, asynchronous)
+    assert result["ok"] is True, result
+    assert [path for _, path, _ in sdk.calls] == ["one_time_sends.create_from_quote"]
+    # cover_from_name goes out as sender_name. The payer accepts the terms, so no accept_aup.
+    assert sdk.calls[0][2] == {
+        "quote_id": QUOTE,
+        "sender_name": "Dana Whitfield",
+        "approval_id": APPROVAL,
+        "email": "dana@example.com",
+        "idempotency_key": KEY,
+    }
+    assert set(result["data"]) == {"one_time_send", "status_url"}
+    assert result["data"]["status_url"] == order["status_url"]
+    shown = result["data"]["one_time_send"]
+    assert set(shown) == set(module._ORDER_KEYS)
+    assert shown["id"] == order["id"]
+    assert shown["next"] == "checkout"
+    assert shown["amount_micro"] == 2490000
+    assert not {"status_token", "email", "card", "checkout_url", "fax"} & set(shown)
+    assert "4242" not in json.dumps(result)
+    assert "sender@example.com" not in json.dumps(result)
+    assert result["idempotency_key"] == KEY
+    assert result["untrusted"] == ["data"]
+    assert "no card details" in result["message"]
+
+
+@needs_card_sdk
+def test_card_order_keeps_a_false_delete_after_send(sdk):
+    args = {**CARD_ARGS, "approval_id": APPROVAL, "delete_after_send": False}
+    assert run_sync(live_tool("request_card_payment"), args)["ok"]
+    assert sdk.calls[0][2]["delete_after_send"] is False
+    assert "email" not in sdk.calls[0][2]
+
+
+@pytest.mark.parametrize("asynchronous", MODES)
+async def test_live_card_order_requires_approval_before_sdk(sdk, asynchronous):
+    result = await invoke(live_tool("request_card_payment"), CARD_ARGS, asynchronous)
+    assert result["error_code"] == "approval_required"
+    assert not sdk.opened
+
+
+@needs_card_sdk
+@pytest.mark.parametrize("asynchronous", MODES)
+async def test_card_status_before_payment_returns_the_link_only(sdk, asynchronous):
+    order = {**FIXTURES["OneTimeOrderCreated"], "status": "checkout_open"}
+    sdk.responses["one_time_sends.get"] = order
+    tool = toolkit_tools()["get_card_payment_status"]
+    result = await invoke(tool, {"order_id": ORDER}, asynchronous)
+    assert result["ok"] is True, result
+    assert [call[1:] for call in sdk.calls] == [("one_time_sends.get", {"order_id": ORDER})]
+    assert set(result["data"]) == {"one_time_send", "status_url", "fax", "attempts"}
+    assert result["data"]["status_url"] == order["status_url"]
+    assert result["data"]["fax"] is None
+    assert result["data"]["attempts"] == []
+    assert "status_token" not in json.dumps(result)
+    assert "idempotency_key" not in result
+
+
+@needs_card_sdk
+@pytest.mark.parametrize("asynchronous", MODES)
+async def test_card_status_after_release_reads_the_fax_and_attempts(sdk, asynchronous):
+    order = {**FIXTURES["OneTimeOrder"], "status_url": "https://app.faxforagents.com/send/x?t=1"}
+    sdk.responses["one_time_sends.get"] = order
+    sdk.responses["faxes.list_attempts"] = FIXTURES["AttemptPage"]
+    tool = toolkit_tools()["get_card_payment_status"]
+    result = await invoke(tool, {"order_id": ORDER}, asynchronous)
+    assert result["ok"] is True, result
+    assert [call[1:] for call in sdk.calls] == [
+        ("one_time_sends.get", {"order_id": ORDER}),
+        ("faxes.list_attempts", {"fax_id": order["fax"]["id"]}),
+    ]
+    data = result["data"]
+    # done: nobody has anything left to do on the page, so the link is withheld
+    assert data["status_url"] is None
+    assert data["one_time_send"]["status"] == "captured"
+    assert data["one_time_send"]["captured_micro"] == 2490000
+    assert data["fax"]["state"] == "delivered"
+    assert data["attempts"] == FIXTURES["AttemptPage"]["items"]
+    assert "sender@example.com" not in json.dumps(result)
+    assert order["fax"]["one_time"]["card"]["last4"] == "4242"
+    assert data["fax"]["one_time"]["card"] is None
+    assert "4242" not in json.dumps(result)
+    assert not {"email", "card"} & set(data["one_time_send"])
+    assert all(path not in ("faxes.create", "one_time_sends.checkout") for _, path, _ in sdk.calls)
+
+
+@needs_card_sdk
+def test_real_sdk_card_order_body_header_and_status_reads(monkeypatch):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if request.url.path.endswith("/attempts"):
+            return httpx.Response(200, json=FIXTURES["AttemptPage"])
+        if request.method == "GET":
+            return httpx.Response(200, json=FIXTURES["OneTimeOrder"])
+        return httpx.Response(200, json=FIXTURES["OneTimeOrderCreated"])
+
+    monkeypatch.setattr(
+        module, "Client", lambda **kw: Client(**kw, transport=httpx.MockTransport(handler))
+    )
+    args = {**CARD_ARGS, "approval_id": APPROVAL}
+    created = run_sync(live_tool("request_card_payment"), args)
+    assert created["ok"], created
+    assert requests[0].url.path == "/v1/one-time-sends/from-quote"
+    assert requests[0].headers["Idempotency-Key"] == KEY
+    assert requests[0].headers["Authorization"] == f"Bearer {LIVE_KEY}"
+    assert json.loads(requests[0].content) == {
+        "quote_id": QUOTE,
+        "sender_name": "Dana Whitfield",
+        "approval_id": APPROVAL,
+    }
+    assert created["data"]["status_url"].startswith("https://app.faxforagents.com/send/")
+    assert "status_token" not in json.dumps(created)
+    status = run_sync(live_tool("get_card_payment_status"), {"order_id": ORDER})
+    assert status["ok"], status
+    fax_id = FIXTURES["OneTimeOrder"]["fax"]["id"]
+    assert [r.url.path for r in requests[1:]] == [
+        f"/v1/one-time-sends/{ORDER}",
+        f"/v1/faxes/{fax_id}/attempts",
+    ]
+    assert all(r.method == "GET" for r in requests[1:])
+    assert status["data"]["fax"]["id"] == fax_id
+    assert status["data"]["attempts"][0]["status"] == "delivered"
+    assert "sender@example.com" not in json.dumps(status)
+    assert "4242" not in json.dumps(status)
+
+
+@pytest.mark.skipif(CARD_SDK, reason="covers SDKs older than 0.4.1")
+def test_card_tools_ask_for_a_newer_sdk_without_a_request(monkeypatch):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(500)
+
+    monkeypatch.setattr(
+        module, "Client", lambda **kw: Client(**kw, transport=httpx.MockTransport(handler))
+    )
+    args = {**CARD_ARGS, "approval_id": APPROVAL}
+    for name, arguments in (
+        ("request_card_payment", args),
+        ("get_card_payment_status", {"order_id": ORDER}),
+    ):
+        result = run_sync(live_tool(name), arguments)
+        if name == "get_card_payment_status" and hasattr(sync_sdk, "OneTimeSends"):
+            continue  # SDK 0.4.0 reads orders. It only lacks the optional accept_aup.
+        assert result["error_code"] == "sdk_upgrade_required", result
+    assert not [r for r in requests if r.method == "POST"]
+
+
+def test_renaming_card_tool_cannot_remove_live_approval_gate(sdk):
+    tool = live_tool("request_card_payment", name="renamed_card")
+    assert run_sync(tool, CARD_ARGS)["error_code"] == "approval_required"
+    assert not sdk.opened
+
+
+@needs_quote_options
+@pytest.mark.parametrize("asynchronous", MODES)
+async def test_quote_options_reach_the_sdk(sdk, asynchronous):
+    args = {
+        "document_id": DOC,
+        "to": "+15550000001",
+        "quality": "superfine",
+        "sender_name": "Acme Records",
+        "from_number": "+12025550123",
+        "delete_after_send": True,
+        "idempotency_key": KEY,
+    }
+    result = await invoke(toolkit_tools()["quote_fax"], args, asynchronous)
+    assert result["ok"] is True, result
+    assert sdk.calls[0][1] == "quotes.create"
+    assert sdk.calls[0][2] == {
+        "document_id": DOC,
+        "to": "+15550000001",
+        "quality": "superfine",
+        "sender_name": "Acme Records",
+        "from_": "+12025550123",
+        "delete_after_send": True,
+        "idempotency_key": KEY,
+    }
+
+
+@needs_quote_options
+def test_real_sdk_quote_body_carries_the_options(monkeypatch):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json=FIXTURES["Quote"])
+
+    monkeypatch.setattr(
+        module, "Client", lambda **kw: Client(**kw, transport=httpx.MockTransport(handler))
+    )
+    args = {
+        "document_id": DOC,
+        "to": "+15550000001",
+        "quality": "ultra",
+        "sender_name": "Acme Records",
+        "from_number": "+12025550123",
+        "delete_after_send": False,
+        "idempotency_key": KEY,
+    }
+    assert run_sync(toolkit_tools()["quote_fax"], args)["ok"]
+    body = json.loads(requests[0].content)
+    assert body["quality"] == "ultra"
+    assert body["sender_name"] == "Acme Records"
+    assert body["from"] == "+12025550123"
+    assert body["delete_after_send"] is False
+    assert "from_number" not in body
+
+
+@pytest.mark.skipif(QUOTE_OPTIONS, reason="covers SDKs older than 0.4.0")
+def test_quote_options_ask_for_a_newer_sdk_without_a_request(monkeypatch):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json=FIXTURES["Quote"])
+
+    monkeypatch.setattr(
+        module, "Client", lambda **kw: Client(**kw, transport=httpx.MockTransport(handler))
+    )
+    args = {"document_id": DOC, "to": "+15550000001", "quality": "fine", "idempotency_key": KEY}
+    tool = toolkit_tools()["quote_fax"]
+    assert run_sync(tool, args)["error_code"] == "sdk_upgrade_required"
+    assert not requests
+    del args["quality"]
+    assert run_sync(tool, {**args, "from_number": "+12025550123"})["ok"]
+    assert json.loads(requests[0].content)["from"] == "+12025550123"
+
+
+def test_list_faxes_filters_by_send_key(sdk):
+    result = run_sync(toolkit_tools()["list_faxes"], {"idempotency_key": "send-results-1"})
+    if not LIST_FILTER:
+        assert result["error_code"] == "sdk_upgrade_required"
+        return
+    assert result["ok"] is True
+    assert sdk.calls[0][1:] == ("faxes.list", {"limit": 20, "idempotency_key": "send-results-1"})
+    # a filter, not a retry token: a read echoes no key
+    assert "idempotency_key" not in result
+
+
+def test_guide_covers_card_payment_and_going_live():
+    sections = run_sync(guide_tool(), {})["sections"]
+    assert {"one_time", "going_live"} <= set(sections)
+    assert "request_card_payment" in sections["one_time"]
+    assert "status_url" in sections["one_time"]
+    assert list(run_sync(guide_tool(), {"section": "one_time"})["sections"]) == ["one_time"]

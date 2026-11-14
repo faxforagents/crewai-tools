@@ -3,6 +3,7 @@
 from faxforagents_crewai.tool import (
     CancelFaxTool,
     ExtractFaxDataTool,
+    GetCardPaymentStatusTool,
     GetFaxBalanceTool,
     GetFaxCapabilitiesTool,
     GetFaxDocumentTool,
@@ -14,6 +15,7 @@ from faxforagents_crewai.tool import (
     PrepareFaxTool,
     QuoteFaxTool,
     ReadInboundFaxTool,
+    RequestCardPaymentTool,
     RequestHumanReviewTool,
     SendApprovedFaxTool,
 )
@@ -29,10 +31,12 @@ __all__ = [
     "ListFaxesTool",
     "GetFaxBalanceTool",
     "CancelFaxTool",
+    "RequestCardPaymentTool",
+    "GetCardPaymentStatusTool",
     "RequestHumanReviewTool",
     "GetReviewStatusTool",
     "ListInboxTool",
     "ReadInboundFaxTool",
     "ExtractFaxDataTool",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"
