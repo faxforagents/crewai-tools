@@ -124,6 +124,9 @@ All classes are exported from `faxforagents_crewai` and defined in `faxforagents
 | `read_inbound_fax` | `ReadInboundFaxTool` | `inbox.get` |
 | `extract_fax_data` | `ExtractFaxDataTool` | `extractions.create` |
 
+The [hosted MCP server](https://faxforagents.com/mcp/) lists 17 tools.
+Its two card tools, `request_card_payment` and `get_card_payment_status`, are not in this package.
+
 `FaxForAgentsToolkit` in `faxforagents_crewai.toolkit` provides all tools through `get_tools()`.
 Preparation requires exactly one of `text`, `markdown`, `html`, or a completed `upload_id`.
 Extraction requires exactly one of `inbox_item_id` or `document_id`.

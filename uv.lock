@@ -841,7 +841,7 @@ dev = [
 requires-dist = [
     { name = "crewai", specifier = ">=1.15.35,<1.16" },
     { name = "crewai-tools", specifier = ">=1.15.35,<1.16" },
-    { name = "faxforagents", specifier = ">=0.2.3,<0.5" },
+    { name = "faxforagents", specifier = ">=0.2.3,<0.7" },
     { name = "pydantic", specifier = ">=2.11.9,<3" },
 ]
 
