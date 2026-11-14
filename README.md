@@ -30,7 +30,15 @@ Use 17 CrewAI tools through the [Fax for Agents Python SDK](https://github.com/f
 Fax for Agents is made by JSB Holdings LLC.
 This package is prepared for CrewAI AMP. It has not been published.
 
-Install the local checkout.
+Until it is published, install it from this repository.
+
+```bash
+pip install "git+https://github.com/faxforagents/crewai-tools"
+```
+
+The package `faxforagents-crewai` is not on PyPI yet. It is not in the CrewAI tool registry either, so `crewai tool install` does not find it.
+
+To work on the package, install the local checkout.
 
 ```bash
 uv sync
@@ -49,13 +57,16 @@ Sandbox mode requires an `ffa_test_` credential before contacting the SDK.
 The destination `+15550000001` simulates delivery without contacting a carrier.
 
 This example prepares a document and creates a quote.
-Persist the operation ID and reuse it when retrying the same operation.
+It makes a new operation ID on each run, so it can be run again.
+In your own code, persist the operation ID and reuse it when retrying the same operation.
 Choose a new operation ID for changed content or destinations.
 
 ```python
+import uuid
+
 from faxforagents_crewai import PrepareFaxTool, QuoteFaxTool
 
-operation = "sandbox-example-001"
+operation = f"sandbox-example-{uuid.uuid4().hex[:8]}"  # new idempotency keys on every run
 prepared = PrepareFaxTool().run(
     text="Sandbox fax example",
     idempotency_key=f"{operation}-prepare",
