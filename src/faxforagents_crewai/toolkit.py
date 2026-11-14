@@ -9,7 +9,7 @@ from faxforagents_crewai.tool import TOOL_CLASSES, _Connection, _connection
 
 
 class FaxForAgentsToolkit(BaseModel):
-    """Create all fifteen tools. Credentials are resolved once and hidden from serialization."""
+    """Create all seventeen tools. Credentials are resolved once and hidden from serialization."""
 
     model_config = ConfigDict(frozen=True)
     _connection: _Connection = PrivateAttr()

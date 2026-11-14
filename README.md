@@ -23,10 +23,10 @@
 
   <a href="https://www.python.org"><img src="https://img.shields.io/badge/python-3.10%20to%203.13-3776ab" alt="Python 3.10 to 3.13"></a>
 
-  <a href="https://docs.crewai.com/en/learn/create-custom-tools"><img src="https://img.shields.io/badge/CrewAI-15%20tools-6b4fbb" alt="15 CrewAI tools"></a>
+  <a href="https://docs.crewai.com/en/learn/create-custom-tools"><img src="https://img.shields.io/badge/CrewAI-17%20tools-6b4fbb" alt="17 CrewAI tools"></a>
 </p>
 
-Use 15 CrewAI tools through the [Fax for Agents Python SDK](https://github.com/faxforagents/sdk-python).
+Use 17 CrewAI tools through the [Fax for Agents Python SDK](https://github.com/faxforagents/sdk-python).
 Fax for Agents is made by JSB Holdings LLC.
 This package is prepared for CrewAI AMP. It has not been published.
 
@@ -82,7 +82,9 @@ CrewAI agent calls preserve the same validation, approval, and extraction schema
 
 ## Approval and retries
 
-Only `SendApprovedFaxTool` sends a fax.
+Only `SendApprovedFaxTool` sends a fax from the wallet.
+`RequestCardPaymentTool` opens a card order that sends the fax once a person has paid.
+A live card order requires `approval_id` too.
 Every mutation requires a caller-supplied `idempotency_key`.
 Every send requires `quote_id`. Every live send also requires `approval_id` and explicit `sandbox=False` configuration.
 The service checks approval ownership, expiry, quote binding, and consumption.
@@ -118,14 +120,23 @@ All classes are exported from `faxforagents_crewai` and defined in `faxforagents
 | `list_faxes` | `ListFaxesTool` | `faxes.list` |
 | `get_fax_balance` | `GetFaxBalanceTool` | `billing.balance` |
 | `cancel_fax` | `CancelFaxTool` | `faxes.cancel` |
+| `request_card_payment` | `RequestCardPaymentTool` | `one_time_sends.create_from_quote` |
+| `get_card_payment_status` | `GetCardPaymentStatusTool` | `one_time_sends.get`, then `faxes.list_attempts` once the fax exists |
 | `request_human_review` | `RequestHumanReviewTool` | `approvals.request`, `approvals.request_help` |
 | `get_review_status` | `GetReviewStatusTool` | `approvals.get` |
 | `list_inbox` | `ListInboxTool` | `inbox.list` |
 | `read_inbound_fax` | `ReadInboundFaxTool` | `inbox.get` |
 | `extract_fax_data` | `ExtractFaxDataTool` | `extractions.create` |
 
-The [hosted MCP server](https://faxforagents.com/mcp/) lists 17 tools.
-Its two card tools, `request_card_payment` and `get_card_payment_status`, are not in this package.
+The [hosted MCP server](https://faxforagents.com/mcp/) lists the same 17 tools at API 1.20.3.
+Its annotations mark `send_approved_fax` and `cancel_fax` as destructive.
+CrewAI tools carry no annotation field, so the shipped `tool-definitions.json` keeps them for hosts that read it.
+
+`quote_fax` takes `quality`, `sender_name`, `from_number` and `delete_after_send`.
+`list_faxes` takes `idempotency_key` as a filter that finds the send made with that key.
+Those arguments and the two card tools need a newer SDK than the lowest one this package accepts.
+The quote options and the filter need `faxforagents` 0.4.0. The card tools need 0.4.1.
+With an older SDK the tool answers `sdk_upgrade_required` and sends no request.
 
 `FaxForAgentsToolkit` in `faxforagents_crewai.toolkit` provides all tools through `get_tools()`.
 Preparation requires exactly one of `text`, `markdown`, `html`, or a completed `upload_id`.
@@ -134,6 +145,26 @@ Extraction accepts an optional `schema` for structured fields.
 Lists return one page and clamp limits between 1 and 100.
 Pass `next_cursor` unchanged until it is null.
 Quote review uses the SDK's quote-only request. The message applies to help requests.
+
+## Card payment
+
+`RequestCardPaymentTool` asks a person to pay for one quoted fax by card, with no wallet balance.
+It takes `quote_id`, `cover_from_name` and an `idempotency_key`, plus optional `approval_id`, `email` and `delete_after_send`.
+The result holds `data.one_time_send` and `data.status_url`.
+Give `status_url` to the person. They accept the terms and pay by card on that hosted page.
+No tool in this package takes or handles card details, and no tool can pay.
+Nothing is sent or charged until the person pays.
+The card is charged only for pages the carrier reports as arrived.
+
+`GetCardPaymentStatusTool` reads the order by `order_id`.
+`data.one_time_send.next` is `checkout`, `confirm`, `wait` or `done`.
+`data.status_url` is set only while a person still has to pay or confirm.
+Once the fax is released, `data.fax` and `data.attempts` carry its delivery state and carrier evidence.
+The order's status token, the payer's email address and the order's card field are left out of both results.
+
+Card orders need a live credential and `sandbox=False`. The API refuses a test credential.
+They cover the United States and Canada, within the page limit that `get_fax_capabilities` reports under `one_time`.
+See the [one-time send guide](https://faxforagents.com/docs/one-time-send/) for the payment flow.
 
 ## Results and received text
 

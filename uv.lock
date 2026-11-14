@@ -806,20 +806,20 @@ wheels = [
 
 [[package]]
 name = "faxforagents"
-version = "0.2.3"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/d4/98541b651f600fa8a4fddf338b2c69e901744c4127a3c2d925e525697373/faxforagents-0.2.3.tar.gz", hash = "sha256:f1d16e5b6abe59ca966e33a242db75983e8bbf5df5ce005c9b8b2ea3e211b5fa", size = 91674, upload-time = "2026-11-02T13:30:43.171Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/f6/8c7d11b1a4a55533da12cb759ea7bc8b2e6dbfc24264c267d913c5b56cc5/faxforagents-0.6.0.tar.gz", hash = "sha256:aa673873ca5d03886a372c595a73c82440b724b80632f89ec9854a1b1e22b478", size = 127141, upload-time = "2026-11-13T11:38:24.289Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/bd/361b4c3c3c89e5ff2ebe83299dc743496a127edbabee301f390e79e823d1/faxforagents-0.2.3-py3-none-any.whl", hash = "sha256:b98a1a25dd57fb0ce21e6f64177469e4f054d640646c22f9b32ee582c2f0001b", size = 48197, upload-time = "2026-11-02T13:30:41.771Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/89/3367729a2ad43e10977b0f657b76de9b7dcf4c722340810caa2c0efa4fa2/faxforagents-0.6.0-py3-none-any.whl", hash = "sha256:796eaa308ea2363e1c2b923e38dd51240eff8509a2d06c28ef0573e8fed06b30", size = 62628, upload-time = "2026-11-13T11:38:22.778Z" },
 ]
 
 [[package]]
 name = "faxforagents-crewai"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "crewai" },

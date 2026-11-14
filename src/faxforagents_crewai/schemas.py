@@ -20,6 +20,8 @@ QuoteId = Annotated[str, Field(pattern=r"^quote_[0-9a-f]{32}$")]
 ApprovalId = Annotated[str, Field(pattern=r"^apr_[0-9a-f]{32}$")]
 FaxId = Annotated[str, Field(pattern=r"^fax_[0-9a-f]{32}$")]
 InboxId = Annotated[str, Field(pattern=r"^inb_[0-9a-f]{32}$")]
+OrderId = Annotated[str, Field(pattern=r"^oto_[0-9a-f]{32}$")]
+E164 = Annotated[str, Field(pattern=r"^\+[1-9][0-9]{1,14}$")]
 Text = Annotated[str, Field(min_length=1, max_length=200_000)]
 
 
@@ -81,8 +83,12 @@ class Cover(Arguments):
 
 class QuoteFaxInput(Mutation):
     document_id: DocumentId
-    to: Annotated[str, Field(pattern=r"^\+[1-9][0-9]{1,14}$")]
+    to: E164
     cover: Cover | None = None
+    quality: Literal["standard", "fine", "superfine", "ultra"] | None = None
+    sender_name: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+    from_number: E164 | None = None
+    delete_after_send: bool | None = None
 
 
 class SendApprovedFaxInput(Mutation):
@@ -110,10 +116,28 @@ class PageInput(Arguments):
 
 class ListFaxesInput(PageInput):
     state: Literal["queued", "active", "delivered", "partial", "failed", "unknown"] | None = None
+    idempotency_key: Annotated[str, Field(min_length=1, max_length=255)] | None = None
 
 
 class CancelFaxInput(Mutation):
     fax_id: FaxId
+
+
+class RequestCardPaymentInput(Mutation):
+    quote_id: QuoteId
+    cover_from_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120)
+    ]
+    approval_id: ApprovalId | None = Field(
+        default=None,
+        description="Human approval bound to this quote. Required for every live card order.",
+    )
+    email: Annotated[str, Field(min_length=3, max_length=254)] | None = None
+    delete_after_send: bool | None = None
+
+
+class GetCardPaymentStatusInput(Arguments):
+    order_id: OrderId
 
 
 class RequestHumanReviewInput(Mutation):

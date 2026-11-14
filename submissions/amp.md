@@ -3,7 +3,7 @@
 Prepared on 2026-11-04. Nothing has been published.
 
 The product is Fax for Agents. The requested scaffold name was `faxforagents`.
-The distribution is `faxforagents-crewai`, version `0.1.0`.
+The distribution is `faxforagents-crewai`, version `0.2.0`.
 Python imports use `faxforagents_crewai`.
 The planned source repository is `https://github.com/faxforagents/crewai-tools`.
 
@@ -57,7 +57,7 @@ Use Python 3.10 to 3.13, Git, and uv 0.5.0 or later.
 Run `uv sync` from this checkout.
 The declared dependencies include bounded versions of `crewai`, `crewai-tools`, `faxforagents`, and `pydantic`.
 CrewAI and crewai-tools are constrained to `>=1.15.35,<1.16`.
-The SDK is constrained to `>=0.2.3,<0.3`.
+The SDK is constrained to `>=0.2.3,<0.7`.
 
 Create a sandbox credential in the [Fax for Agents dashboard](https://app.faxforagents.com/).
 Store it as `FAXFORAGENTS_API_KEY` through host secret settings.
