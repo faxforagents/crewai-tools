@@ -14,10 +14,11 @@ The package has the 17 tools of the hosted MCP server at API 1.20.3. It had 15. 
 - The local guide has the sections `one_time` and `going_live`.
 - Tool descriptions and annotations follow the hosted server. `cancel_fax` is now marked idempotent.
 
-The SDK dependency is `faxforagents>=0.2.3,<0.7`. The range ended below 0.3 and shut out the current SDK.
-The card tools need SDK 0.4.1. The quote options and the list filter need 0.4.0.
-With an older SDK those calls answer `sdk_upgrade_required` and send no request.
-The tests pass against SDK 0.2.3, 0.4.0, 0.5.0 and 0.6.0. The lock file uses 0.6.0.
+The SDK dependency is `faxforagents>=0.11.2,<0.12`, so this release needs SDK 0.11.2 or a later 0.11 release.
+0.1.0 accepted only SDK versions below 0.3, which shut out the current SDK.
+SDK 0.11.2 has every call and argument the tools use.
+If an older SDK is installed anyway, those calls answer `sdk_upgrade_required` and send no request.
+The tests pass against SDK 0.11.2, and the lock file uses it.
 
 ## 0.1.0, 2026-11-04
 
