@@ -1,0 +1,51 @@
+name: ci
+
+# Runs the local checks of the README on every push to main and on pull requests.
+# Actions are pinned by commit SHA, with the version in a comment.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels the run it replaces. Every other run has a group of its own.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: py${{ matrix.python }}${{ matrix.lint && ', lint, types and build' || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The oldest and the newest Python the package supports. The lint, type and build checks run once.
+          - python: "3.10"
+          - python: "3.13"
+            lint: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # The dev tools are a PEP 735 dependency group, which pip installs from version 25.1.
+      - run: python -m pip install --upgrade "pip>=25.1"
+      - run: pip install -e . --group dev
+      - run: pytest -q
+      - if: matrix.lint
+        run: ruff check src tests examples
+      - if: matrix.lint
+        run: mypy --python-version 3.12 src
+      - if: matrix.lint
+        run: |
+          pip install build twine
+          python -m build
+          twine check dist/*

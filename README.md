@@ -19,6 +19,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/faxforagents/crewai-tools/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/faxforagents/crewai-tools/ci.yml?branch=main&label=ci" alt="CI"></a>
+
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-1f6feb" alt="MIT licence"></a>
 
   <a href="https://www.python.org"><img src="https://img.shields.io/badge/python-3.10%20to%203.13-3776ab" alt="Python 3.10 to 3.13"></a>
@@ -218,6 +220,7 @@ uv run mypy --python-version 3.12 src
 uv build
 ```
 
+CI runs these checks with Python 3.10 and 3.13 on every push to main and on each pull request.
 Tests use fake SDK clients, mock HTTP, and scripted model replies.
 They do not contact the fax service or a model provider.
 Type checking uses Python 3.12 because the installed NumPy stubs use Python 3.12 syntax.
